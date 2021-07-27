@@ -1,10 +1,17 @@
 /*
 Project: This is an example that shows how to get data from DDS238 meters.
-Autor: Carlos Escobar
+Author: Carlos Escobar
+Board: Arduino Mega / Mega 2560
+Requisites: ModbusMaster-2.0.1 - https://www.arduino.cc/reference/en/libraries/modbusmaster/
+
+Wiring:
+  Arduino 8 to DE+RE (MAX485)
+  Arduino TX2 to DI  (MAX485)
+  Arduino RX2 to RO  (MAX485)
 */
 
 #include <ModbusMaster.h>
-#define MAX485_DE      8
+#define MAX485_DE 8
 
 //lets instantitate the ModbusMaster object
 ModbusMaster node;
