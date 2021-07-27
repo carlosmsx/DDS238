@@ -13,6 +13,19 @@ Wiring:
 #include <ModbusMaster.h>
 #define MAX485_DE 8
 
+typedef struct {
+  uint32_t ID;
+  float total;
+  float V;
+  float I;
+  int16_t P;
+  int16_t Kvar;
+  float CosPhi;
+  float F;
+  uint16_t settings;
+  uint32_t bauds;
+} READING;
+
 //lets instantitate the ModbusMaster object
 ModbusMaster node;
 
@@ -74,53 +87,36 @@ void setup()
 
 
 void loop()
-{
-  uint32_t total;
-  uint16_t V;
-  uint16_t I;
-  int16_t P;
-  int16_t Kvar;
-  uint16_t CosPhi;
-  uint16_t F;
-  uint16_t settings;
-    
+{ 
+  uint32_t tim = millis() + 5000;
+  READING r;
   uint8_t result = node.readHoldingRegisters(0x0, 32); //leo 32 registros
   if (result == node.ku8MBSuccess)
   {
-    total   = node.getResponseBuffer(0x00)<<16 | node.getResponseBuffer(0x01);
-    V       = node.getResponseBuffer(0x0C);
-    I       = node.getResponseBuffer(0x0D);
-    P       = node.getResponseBuffer(0x0E);
-    Kvar    = node.getResponseBuffer(0x0F);
-    CosPhi  = node.getResponseBuffer(0x10);
-    F       = node.getResponseBuffer(0x11);
-    settings= node.getResponseBuffer(0x15);
+    r.total   = (float)(node.getResponseBuffer(0x00)*0x10000 + node.getResponseBuffer(0x01))/100.0;
+    r.V       = (float)node.getResponseBuffer(0x0C)/10.0;
+    r.I       = (float)node.getResponseBuffer(0x0D)/100.0;
+    r.P       = node.getResponseBuffer(0x0E);
+    r.Kvar    = node.getResponseBuffer(0x0F);
+    r.CosPhi  = (float)node.getResponseBuffer(0x10)/1000.0;
+    r.F       = (float)node.getResponseBuffer(0x11)/100.0;
+    r.settings= node.getResponseBuffer(0x15);
+    r.ID = r.settings>>8;
 
-    Serial.print("acumulado="); Serial.print(total); Serial.println(" KW/h");
-    Serial.print("V="); Serial.print((float)V/10); Serial.println(" volts");
-    Serial.print("I="); Serial.print((float)I/100); Serial.println(" ampers");
-    Serial.print("P="); Serial.print(P); Serial.println(" watts");
-    Serial.print("KVar="); Serial.print(Kvar); Serial.println(" watts");
-    Serial.print("cos PHI="); Serial.println((float)CosPhi/1000);
-    Serial.print("F="); Serial.print((float)F/100); Serial.println(" Hz");
-    switch(settings&0xff)
-    {
-      case 1:
-        Serial.println("bauds=9600"); 
-        break;
-      case 2:
-        Serial.println("bauds=4800"); 
-        break;
-      case 3:
-        Serial.println("bauds=2400"); 
-        break;
-      case 4:
-        Serial.println("bauds=1200"); 
-        break;
-    }
-    Serial.write("ID="); Serial.println(settings>>8);
+    uint32_t baudTable[] = {0, 9600, 4800, 2400, 1200};
+    r.bauds = baudTable[r.settings & 0xff];
+
+    Serial.write("ID="); Serial.println(r.ID);
+    Serial.write("bauds="); Serial.println(r.bauds);
+    Serial.print("acumulado="); Serial.print(r.total); Serial.println(" KW/h");
+    Serial.print("V="); Serial.print(r.V); Serial.println(" volts");
+    Serial.print("I="); Serial.print(r.I); Serial.println(" ampers");
+    Serial.print("P="); Serial.print(r.P); Serial.println(" watts");
+    Serial.print("KVar="); Serial.print(r.Kvar); Serial.println(" watts");
+    Serial.print("cos PHI="); Serial.println(r.CosPhi);
+    Serial.print("F="); Serial.print(r.F); Serial.println(" Hz");
   }
   Serial.println("-----");
 
-  delay(1000);
+  while (millis()<=tim);
 }
