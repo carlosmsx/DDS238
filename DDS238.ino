@@ -12,14 +12,17 @@ Wiring:
 
 #include <ModbusMaster.h>
 #define MAX485_DE 8
+#define INTERVAL 5000
 
 typedef struct {
   uint32_t ID;
   float total;
+  float export_energy;
+  float import_energy;
   float V;
   float I;
-  int16_t P;
-  int16_t Kvar;
+  float P;
+  float Kvar;
   float CosPhi;
   float F;
   uint16_t settings;
@@ -41,7 +44,7 @@ void postTransmission()
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   pinMode(MAX485_DE, OUTPUT);
   digitalWrite(MAX485_DE, 0);
@@ -88,16 +91,18 @@ void setup()
 
 void loop()
 { 
-  uint32_t tim = millis() + 5000;
+  uint32_t tim = millis() + INTERVAL;
   READING r;
   uint8_t result = node.readHoldingRegisters(0x0, 32); //leo 32 registros
   if (result == node.ku8MBSuccess)
   {
     r.total   = (float)(node.getResponseBuffer(0x00)*0x10000 + node.getResponseBuffer(0x01))/100.0;
+    r.export_energy  = (float)(node.getResponseBuffer(0x08)*0x10000 + node.getResponseBuffer(0x09))/100.0;
+    r.import_energy  = (float)(node.getResponseBuffer(0x0A)*0x10000 + node.getResponseBuffer(0x0B))/100.0;
     r.V       = (float)node.getResponseBuffer(0x0C)/10.0;
     r.I       = (float)node.getResponseBuffer(0x0D)/100.0;
-    r.P       = node.getResponseBuffer(0x0E);
-    r.Kvar    = node.getResponseBuffer(0x0F);
+    r.P       = (float)node.getResponseBuffer(0x0E)/1000.0;
+    r.Kvar    = (float)node.getResponseBuffer(0x0F)/1000.0;
     r.CosPhi  = (float)node.getResponseBuffer(0x10)/1000.0;
     r.F       = (float)node.getResponseBuffer(0x11)/100.0;
     r.settings= node.getResponseBuffer(0x15);
@@ -106,6 +111,7 @@ void loop()
     uint32_t baudTable[] = {0, 9600, 4800, 2400, 1200};
     r.bauds = baudTable[r.settings & 0xff];
 
+    /*
     Serial.write("ID="); Serial.println(r.ID);
     Serial.write("bauds="); Serial.println(r.bauds);
     Serial.print("acumulado="); Serial.print(r.total); Serial.println(" KW/h");
@@ -115,8 +121,19 @@ void loop()
     Serial.print("KVar="); Serial.print(r.Kvar); Serial.println(" watts");
     Serial.print("cos PHI="); Serial.println(r.CosPhi);
     Serial.print("F="); Serial.print(r.F); Serial.println(" Hz");
+    */
+    Serial.print("{'id':"); Serial.print(r.ID); Serial.print(",");
+    Serial.print("'total':"); Serial.print(r.total); Serial.print(",");
+    Serial.print("'export':"); Serial.print(r.export_energy); Serial.print(",");
+    Serial.print("'import':"); Serial.print(r.import_energy); Serial.print(",");
+    Serial.print("'V':"); Serial.print(r.V); Serial.print(",");
+    Serial.print("'I':"); Serial.print(r.I); Serial.print(",");
+    Serial.print("'P':"); Serial.print(r.P); Serial.print(",");
+    Serial.print("'R':"); Serial.print(r.Kvar); Serial.print(",");
+    Serial.print("'CosPhi':"); Serial.print(r.CosPhi); Serial.print(",");
+    Serial.print("'F':"); Serial.print(r.F); Serial.print("}\n");
   }
-  Serial.println("-----");
+  //Serial.println("-----");
 
   while (millis()<=tim);
 }
